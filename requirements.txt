@@ -1,0 +1,7 @@
+accelerate==0.25.0
+diffusers==0.25.0
+gradio
+spaces==0.23.1
+trimesh==4.0.2
+desota
+Pillow==10.1.0
