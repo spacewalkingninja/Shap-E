@@ -15,7 +15,15 @@ from settings import CACHE_EXAMPLES, MAX_SEED
 from utils import randomize_seed_fn
 model = Model()
 
-os.environ['CURL_CA_BUNDLE'] = ''
+from requests.adapters import HTTPAdapter, Retry
+
+s = requests.Session()
+
+retries = Retry(total=5,
+                backoff_factor=0.1,
+                status_forcelist=[ 500, 502, 503, 504 ])
+
+s.mount('https://', HTTPAdapter(max_retries=retries))
 parser = argparse.ArgumentParser()
 parser.add_argument("-mr", "--model_req", 
                     help="DeSOTA Request as yaml file path",
@@ -126,7 +134,7 @@ def main(args):
         "guidance_scale":15.0,
         "seed":69420,
         "randomize_seed":True,
-        "num_inference_steps":64
+        "num_inference_steps":20
         }
         targs = {}
         if 'model_args' in model_request_dict['input_args']:
@@ -168,7 +176,7 @@ def main(args):
         with open(outfile, 'rb') as fr:
             files.append(('upload[]', fr))
             # DeSOTA API Response Post
-            send_task = requests.post(url = send_task_url, files=files)
+            send_task = s.post(url = send_task_url, files=files)
             print(f"[ INFO ] -> DeSOTA API Upload Res:\n{json.dumps(send_task.json(), indent=2)}")
         # Delete temporary file
         os.remove(outfile)

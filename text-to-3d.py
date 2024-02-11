@@ -15,7 +15,15 @@ from settings import CACHE_EXAMPLES, MAX_SEED
 from utils import randomize_seed_fn
 model = Model()
 
-os.environ['CURL_CA_BUNDLE'] = ''
+from requests.adapters import HTTPAdapter, Retry
+
+s = requests.Session()
+
+retries = Retry(total=5,
+                backoff_factor=0.1,
+                status_forcelist=[ 500, 502, 503, 504 ])
+
+s.mount('https://', HTTPAdapter(max_retries=retries))
 parser = argparse.ArgumentParser()
 parser.add_argument("-mr", "--model_req", 
                     help="DeSOTA Request as yaml file path",
@@ -93,6 +101,25 @@ def main(args):
         if isinstance(req_text, list):
             req_text = ' '.join(req_text)
 
+        # Get img file
+        req_img = detools.get_request_image(model_request_dict)
+
+        if isinstance(req_text, list):
+            req_text = ' '.join(req_text)
+
+        if isinstance(req_img, list):
+            imgs_list = req_img
+            req_img = imgs_list[0]
+
+        if test_mode:
+            req_img = os.path.join(APP_PATH, "sample.png")
+        #print(req_img)
+        #exit(1)
+
+        # Read Image in RGB order
+        img = Image.open(req_img)
+
+
     
     if req_text or args.debug == 1:
         if args.debug == 1:
@@ -100,12 +127,14 @@ def main(args):
             model_request_dict = {
                 'input_args':{}
                 }
+            req_img = os.path.join(APP_PATH, "sample.png")
+            img = Image.open(req_img)
         default_config = {
         #"prompt": str(args.text_prompt),
         "guidance_scale":15.0,
-        "seed":420,
+        "seed":69420,
         "randomize_seed":True,
-        "num_inference_steps":40
+        "num_inference_steps":20
         }
         targs = {}
         if 'model_args' in model_request_dict['input_args']:
@@ -119,8 +148,8 @@ def main(args):
         else:
             targs['prompt'] = req_text
         payload = {**default_config, **targs}
-        outfile = model.run_text(payload['prompt'], payload['seed'], payload['guidance_scale'], payload['num_inference_steps'])
-        
+        outfile = model.run_image(img, payload['seed'], payload['guidance_scale'], payload['num_inference_steps'])
+
     if not outfile:
         print(f"[ ERROR ] -> DeSOTA SD.Next API Output ERROR: No results can be parsed for this request")
         exit(2)
@@ -140,14 +169,14 @@ def main(args):
                 indent=2
             )
         detools.user_chown(report_path)
-        #detools.user_chown(outfile)
+        #detools.user_chown(out_filepath)
         print(f"Path to report:\n\t{report_path}")
     else:
         files = []
         with open(outfile, 'rb') as fr:
             files.append(('upload[]', fr))
             # DeSOTA API Response Post
-            send_task = requests.post(url = send_task_url, files=files)
+            send_task = s.post(url = send_task_url, files=files)
             print(f"[ INFO ] -> DeSOTA API Upload Res:\n{json.dumps(send_task.json(), indent=2)}")
         # Delete temporary file
         os.remove(outfile)
