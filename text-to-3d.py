@@ -101,25 +101,6 @@ def main(args):
         if isinstance(req_text, list):
             req_text = ' '.join(req_text)
 
-        # Get img file
-        req_img = detools.get_request_image(model_request_dict)
-
-        if isinstance(req_text, list):
-            req_text = ' '.join(req_text)
-
-        if isinstance(req_img, list):
-            imgs_list = req_img
-            req_img = imgs_list[0]
-
-        if test_mode:
-            req_img = os.path.join(APP_PATH, "sample.png")
-        #print(req_img)
-        #exit(1)
-
-        # Read Image in RGB order
-        img = Image.open(req_img)
-
-
     
     if req_text or args.debug == 1:
         if args.debug == 1:
@@ -127,12 +108,10 @@ def main(args):
             model_request_dict = {
                 'input_args':{}
                 }
-            req_img = os.path.join(APP_PATH, "sample.png")
-            img = Image.open(req_img)
         default_config = {
         #"prompt": str(args.text_prompt),
         "guidance_scale":15.0,
-        "seed":69420,
+        "seed":420,
         "randomize_seed":True,
         "num_inference_steps":20
         }
@@ -148,8 +127,8 @@ def main(args):
         else:
             targs['prompt'] = req_text
         payload = {**default_config, **targs}
-        outfile = model.run_image(img, payload['seed'], payload['guidance_scale'], payload['num_inference_steps'])
-
+        outfile = model.run_text(payload['prompt'], payload['seed'], payload['guidance_scale'], payload['num_inference_steps'])
+        
     if not outfile:
         print(f"[ ERROR ] -> DeSOTA SD.Next API Output ERROR: No results can be parsed for this request")
         exit(2)
@@ -169,7 +148,7 @@ def main(args):
                 indent=2
             )
         detools.user_chown(report_path)
-        #detools.user_chown(out_filepath)
+        #detools.user_chown(outfile)
         print(f"Path to report:\n\t{report_path}")
     else:
         files = []
